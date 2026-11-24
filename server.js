@@ -1,11 +1,10 @@
-import "dotenv/config";
 import cors from "cors";
 import express from "express";
 import helmet from "helmet";
 import mongoose from "mongoose";
-import connectDB from "./db.js";
-import Food from "./schemas/foodSchema.js";
-import Rider from "./schemas/riderSchema.js";
+import connectDB from "./config/db.js";
+import foodRoutes from "./routes/foodRoutes.js";
+import riderRoutes from "./routes/riderRoutes.js";
 
 const app = express();
 const port = Number(process.env.PORT) || 5000;
@@ -21,41 +20,8 @@ app.get("/api/health", (_req, res) =>
   res.json({ status: "ok", database: mongoose.connection.readyState === 1 }),
 );
 
-function addCrudRoutes(path, Model) {
-  const url = `/api/${path}`;
-
-  app.get(url, async (_req, res) =>
-    res.json(await Model.find().sort({ createdAt: -1 }).lean()),
-  );
-  app.post(url, async (req, res) =>
-    res.status(201).json(await Model.create(req.body)),
-  );
-  app.get(`${url}/:id`, async (req, res) => {
-    const item = await Model.findById(req.params.id).lean();
-    if (!item) return res.status(404).json({ message: "Record not found." });
-    res.json(item);
-  });
-  app.patch(`${url}/:id`, async (req, res) => {
-    if (!req.body || !Object.keys(req.body).length) {
-      return res.status(400).json({ message: "Provide fields to update." });
-    }
-    const item = await Model.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true,
-      strict: "throw",
-    });
-    if (!item) return res.status(404).json({ message: "Record not found." });
-    res.json(item);
-  });
-  app.delete(`${url}/:id`, async (req, res) => {
-    const item = await Model.findByIdAndDelete(req.params.id);
-    if (!item) return res.status(404).json({ message: "Record not found." });
-    res.json({ message: "Record deleted.", id: item.id });
-  });
-}
-
-addCrudRoutes("foods", Food);
-addCrudRoutes("riders", Rider);
+app.use("/api/foods", foodRoutes);
+app.use("/api/riders", riderRoutes);
 
 app.use((error, _req, res, _next) => {
   console.error(error);
@@ -73,7 +39,9 @@ app.use((error, _req, res, _next) => {
 });
 
 connectDB()
-  .then(() => app.listen(port, () => console.log(`API running on port ${port}`)))
+  .then(() =>
+    app.listen(port, () => console.log(`API running on port ${port}`)),
+  )
   .catch((error) => {
     console.error("MongoDB connection failed:", error.message);
     process.exitCode = 1;
