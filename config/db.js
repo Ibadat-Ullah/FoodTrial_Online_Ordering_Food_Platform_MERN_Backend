@@ -1,8 +1,11 @@
-import "dotenv/config";
 import mongoose from "mongoose";
 
-const mongoUri =
-  process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/foodtrial";
+const mongoUri = process.env.MONGODB_URI;
 
-export default () =>
-  mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 5000 });
+export default () => {
+  if (!mongoUri) throw new Error("Set MONGODB_URI in BackEnd/.env.");
+  return mongoose.connect(mongoUri, {
+    dbName: "foodtrial",
+    serverSelectionTimeoutMS: 5000,
+  });
+};

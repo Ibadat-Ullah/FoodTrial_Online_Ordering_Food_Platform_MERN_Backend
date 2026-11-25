@@ -1,8 +1,11 @@
+import "dotenv/config";
 import cors from "cors";
 import express from "express";
 import helmet from "helmet";
 import mongoose from "mongoose";
 import connectDB from "./config/db.js";
+import authenticate from "./middleware/authenticate.js";
+import authRoutes from "./routes/authRoutes.js";
 import foodRoutes from "./routes/foodRoutes.js";
 import riderRoutes from "./routes/riderRoutes.js";
 
@@ -20,8 +23,9 @@ app.get("/api/health", (_req, res) =>
   res.json({ status: "ok", database: mongoose.connection.readyState === 1 }),
 );
 
+app.use("/api/auth", authRoutes);
 app.use("/api/foods", foodRoutes);
-app.use("/api/riders", riderRoutes);
+app.use("/api/riders", authenticate, riderRoutes);
 
 app.use((error, _req, res, _next) => {
   console.error(error);
@@ -37,6 +41,10 @@ app.use((error, _req, res, _next) => {
   }
   res.status(500).json({ message: "Server error." });
 });
+
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+  throw new Error("Set a random JWT_SECRET of at least 32 characters in BackEnd/.env.");
+}
 
 connectDB()
   .then(() =>
