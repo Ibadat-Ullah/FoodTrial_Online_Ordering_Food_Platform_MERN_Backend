@@ -3,6 +3,7 @@ import cors from "cors";
 import express from "express";
 import helmet from "helmet";
 import mongoose from "mongoose";
+import { uploadsDirectory } from "./middleware/upload.js";
 import connectDB from "./config/db.js";
 import authenticate from "./middleware/authenticate.js";
 import authRoutes from "./routes/authRoutes.js";
@@ -18,6 +19,7 @@ const origins = (process.env.CLIENT_URL || "http://localhost:5173")
 app.use(helmet());
 app.use(cors({ origin: origins }));
 app.use(express.json({ limit: "1mb" }));
+app.use("/uploads", express.static(uploadsDirectory));
 
 app.get("/api/health", (_req, res) =>
   res.json({ status: "ok", database: mongoose.connection.readyState === 1 }),
@@ -29,6 +31,12 @@ app.use("/api/riders", authenticate, riderRoutes);
 
 app.use((error, _req, res, _next) => {
   console.error(error);
+  if (error.code === "LIMIT_FILE_SIZE") {
+    return res.status(400).json({ message: "Image must be 5 MB or smaller." });
+  }
+  if (error.code === "INVALID_IMAGE_TYPE") {
+    return res.status(400).json({ message: error.message });
+  }
   if (error.code === 11000) {
     return res.status(409).json({ message: "Email already exists." });
   }
