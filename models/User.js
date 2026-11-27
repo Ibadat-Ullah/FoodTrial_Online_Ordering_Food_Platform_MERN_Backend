@@ -12,6 +12,11 @@ const userSchema = new mongoose.Schema(
       trim: true,
       match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
     },
+    role: {
+      type: String,
+      enum: ["customer", "admin"],
+      default: "customer",
+    },
     password: {
       type: String,
       required: true,
@@ -21,6 +26,11 @@ const userSchema = new mongoose.Schema(
     },
   },
   { timestamps: true },
+);
+
+userSchema.index(
+  { role: 1 },
+  { unique: true, partialFilterExpression: { role: "admin" } },
 );
 
 userSchema.pre("save", async function () {
