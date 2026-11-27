@@ -1,9 +1,6 @@
 import Food from "../models/Food.js";
 import crudController from "./crudController.js";
-import {
-  removeUploadedImage,
-  uploadedImagePath,
-} from "../middleware/upload.js";
+import { deleteImage, uploadImage } from "../config/cloudinary.js";
 
 const crud = crudController(Food);
 const listFields = ["ingredients", "allergens", "toppings"];
@@ -39,6 +36,7 @@ export function parsePricedOptions(value) {
 
 export function normalizeFoodFields(fields) {
   const normalized = { ...fields };
+  delete normalized.imagePublicId;
   for (const field of listFields) {
     if (typeof normalized[field] === "string") {
       normalized[field] = normalized[field]
@@ -73,14 +71,17 @@ export default {
     if (!req.file) {
       return res.status(400).json({ message: "Choose an image to upload." });
     }
+    const fields = normalizeFoodFields(req.body);
+    const image = await uploadImage(req.file, "foodtrial/foods");
     try {
       const food = await Food.create({
-        ...normalizeFoodFields(req.body),
-        image: uploadedImagePath(req.file),
+        ...fields,
+        image: image.url,
+        imagePublicId: image.publicId,
       });
       return res.status(201).json(food);
     } catch (error) {
-      await removeUploadedImage(uploadedImagePath(req.file));
+      await deleteImage(image.publicId);
       throw error;
     }
   },
@@ -90,28 +91,33 @@ export default {
     }
     const food = await Food.findById(req.params.id);
     if (!food) {
-      if (req.file) await removeUploadedImage(uploadedImagePath(req.file));
       return res.status(404).json({ message: "Record not found." });
     }
 
-    const oldImage = food.image;
+    const oldImagePublicId = food.imagePublicId;
     const fields = normalizeFoodFields(req.body || {});
     delete fields.image;
+    const image = req.file
+      ? await uploadImage(req.file, "foodtrial/foods")
+      : null;
     Object.assign(food, fields);
-    if (req.file) food.image = uploadedImagePath(req.file);
+    if (image) {
+      food.image = image.url;
+      food.imagePublicId = image.publicId;
+    }
     try {
       await food.save();
     } catch (error) {
-      if (req.file) await removeUploadedImage(uploadedImagePath(req.file));
+      if (image) await deleteImage(image.publicId);
       throw error;
     }
-    if (req.file) await removeUploadedImage(oldImage);
+    if (image && oldImagePublicId) await deleteImage(oldImagePublicId);
     return res.json(food);
   },
   remove: async (req, res) => {
     const food = await Food.findByIdAndDelete(req.params.id);
     if (!food) return res.status(404).json({ message: "Record not found." });
-    await removeUploadedImage(food.image);
+    await deleteImage(food.imagePublicId);
     return res.json({ message: "Record deleted.", id: food.id });
   },
 };

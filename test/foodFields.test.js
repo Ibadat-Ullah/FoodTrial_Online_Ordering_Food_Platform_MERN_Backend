@@ -50,7 +50,7 @@ test("food model defaults to available and bounds optional detail lists", () => 
     category: "Main",
     description: "A sample food item description.",
     price: 100,
-    image: "/uploads/sample.jpg",
+    image: "https://res.cloudinary.com/demo/image/upload/sample.jpg",
   });
 
   assert.equal(food.isAvailable, true);

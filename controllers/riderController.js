@@ -1,9 +1,6 @@
 import Rider from "../models/Rider.js";
 import crudController from "./crudController.js";
-import {
-  removeUploadedImage,
-  uploadedImagePath,
-} from "../middleware/upload.js";
+import { deleteImage, uploadImage } from "../config/cloudinary.js";
 
 const crud = crudController(Rider);
 
@@ -12,14 +9,19 @@ export default {
   create: async (req, res) => {
     const fields = { ...(req.body || {}) };
     delete fields.profileImage;
+    delete fields.profileImagePublicId;
+    const image = req.file
+      ? await uploadImage(req.file, "foodtrial/riders")
+      : null;
     try {
       const rider = await Rider.create({
         ...fields,
-        profileImage: req.file ? uploadedImagePath(req.file) : "",
+        profileImage: image?.url || "",
+        profileImagePublicId: image?.publicId || "",
       });
       return res.status(201).json(rider);
     } catch (error) {
-      if (req.file) await removeUploadedImage(uploadedImagePath(req.file));
+      if (image) await deleteImage(image.publicId);
       throw error;
     }
   },
@@ -29,28 +31,34 @@ export default {
     }
     const rider = await Rider.findById(req.params.id);
     if (!rider) {
-      if (req.file) await removeUploadedImage(uploadedImagePath(req.file));
       return res.status(404).json({ message: "Record not found." });
     }
 
-    const oldImage = rider.profileImage;
+    const oldImagePublicId = rider.profileImagePublicId;
     const fields = { ...(req.body || {}) };
     delete fields.profileImage;
+    delete fields.profileImagePublicId;
+    const image = req.file
+      ? await uploadImage(req.file, "foodtrial/riders")
+      : null;
     Object.assign(rider, fields);
-    if (req.file) rider.profileImage = uploadedImagePath(req.file);
+    if (image) {
+      rider.profileImage = image.url;
+      rider.profileImagePublicId = image.publicId;
+    }
     try {
       await rider.save();
     } catch (error) {
-      if (req.file) await removeUploadedImage(uploadedImagePath(req.file));
+      if (image) await deleteImage(image.publicId);
       throw error;
     }
-    if (req.file) await removeUploadedImage(oldImage);
+    if (image && oldImagePublicId) await deleteImage(oldImagePublicId);
     return res.json(rider);
   },
   remove: async (req, res) => {
     const rider = await Rider.findByIdAndDelete(req.params.id);
     if (!rider) return res.status(404).json({ message: "Record not found." });
-    await removeUploadedImage(rider.profileImage);
+    await deleteImage(rider.profileImagePublicId);
     return res.json({ message: "Record deleted.", id: rider.id });
   },
 };

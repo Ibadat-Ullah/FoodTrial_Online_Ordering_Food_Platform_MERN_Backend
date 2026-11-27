@@ -14,6 +14,7 @@ const riderSchema = new mongoose.Schema(
     phone: { type: String, required: true, trim: true },
     deliveryZone: { type: String, trim: true, maxlength: 100, default: "" },
     profileImage: { type: String, trim: true, default: "" },
+    profileImagePublicId: { type: String, trim: true, default: "" },
     vehicleType: {
       type: String,
       required: true,

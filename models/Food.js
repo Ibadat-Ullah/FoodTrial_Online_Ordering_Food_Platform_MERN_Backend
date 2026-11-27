@@ -21,6 +21,7 @@ const foodSchema = new mongoose.Schema(
     description: { type: String, required: true, trim: true },
     price: { type: Number, required: true, min: 0.01 },
     image: { type: String, required: true, trim: true },
+    imagePublicId: { type: String, trim: true, default: "" },
     isAvailable: { type: Boolean, default: true },
     preparationTime: { type: Number, min: 1, max: 240 },
     portionSize: { type: String, trim: true, maxlength: 60, default: "" },
